@@ -1,64 +1,71 @@
-# Game Concept Card — TEMPLATE
+# Game Concept Card — TEMPLATE (v3)
 
-Copy this file for each new game: `GAME-00X-<SLUG>.md`. Fill it in BEFORE touching the builder prompt.
+**Target length: ~2 pages.** If it's longer, you're writing a GDD. Cut.
+Everything about representation, safety, privacy, accessibility, and tech baseline lives in
+`STUDIO-DESIGN-BIBLE.md` — don't repeat it here.
 
-## 1. One-liner
-> (Explain to a 7-year-old in one sentence. If they don't want to play, rewrite.)
+**Layers:** Studio Design Bible (once) → **this card** (every game) → one Genre Module (`modules/`) → Builder Handoff (generated from the approved card).
 
-## 2. Basics
-- **Title (working):**
-- **Ages:**
-- **Fantasy:** (who are you, what's wrong, what do you do?)
-- **Tagline:**
+---
 
-## 3. Core loop
-`ACTION → RESULT → REWARD → repeat, harder`
+# Game #___ — TITLE
+
+**Status:** DRAFT / APPROVED
+**Inherits:** Studio Design Bible v1
+**Genre module:** `modules/________.md` (pick ONE; two only if truly needed)
+
+### 1. Kid Test
+One sentence a 7-year-old could say back to you after hearing it once.
+
+### 2. Game Identity / Fantasy
+Who am I, where am I, what am I trying to do? (2–3 sentences.)
+
+### 3. Emotional Promise
+The feeling arc of one round, as an arrow: `___ → ___ → ___ → ___`
+
+### 4. Replay Hook
+Why does round 2 happen without an adult asking? What changes each round?
+
+### 5. First 10 Seconds
+What the kid sees, does, and discovers before they've had time to get bored. No menus, no tutorial screens.
+
+### 6. Core Loop
+`VERB → VERB → VERB → VERB → REPLAY`
 - Player action:
 - Immediate result:
-- Reward / score:
-- Difficulty ramp:
-- Fail state (kid-safe, no dead-ends):
-- Replay hook ("one more round" because…):
+- Reward:
+- Fail state (funny, recoverable):
 
-## 4. Hero & cast
-- Playable hero (look, personality, 2-sec readability):
-- NPCs (silhouette + color + animation per character):
+### 7. Theme Test (both must be YES)
+- **Mechanic check:** Would the core interaction still be compelling without representation as its only hook?
+- **Identity check:** With our world and cast restored, is this unmistakably ours, not a mechanic with Black skins?
 
-## 5. Map / environment (V1 = ONE)
-- Rooms/zones:
-- Hiding / interact spots:
-- Art direction (1 paragraph, original — no copying existing franchises):
+### 8. Hero & Cast Snapshot
+Follows the Studio Character Standard (Bible §3). Per character, one line: **name/handle — hair (texture+style+details) — skin — signature color/item — movement/energy — role in the game.**
+Readable in 2 seconds at small size.
 
-## 6. Clues / items / content (V1 set)
-- List every item/clue/theme/mystery in V1 (keep it countable):
+**Representation spec check:** Have we specified enough concrete visual and cultural detail for an artist/AI to produce distinct, age-authentic Black children rather than generic characters with brown skin? YES / NO
 
-## 7. Deduction / progression logic (if any)
-- How does the game guarantee exactly one valid solution?
-- How are red herrings / difficulty generated?
+### 9. V1 Environment
+One place. Rooms/zones listed. Three specific details that make it *this* place and not a generic one.
 
-## 8. Controls
+### 10. Countable V1 Content
+Numbers only. (Maps, characters, items, rounds, levels, secrets, etc. — no sound or animation counts.)
+
+### 11. Controls
 - Touch:
-- Keyboard/mouse:
-- Chromebook notes:
+- Keyboard:
+- Chromebook (no mouse):
 
-## 9. Juice & feedback
-- Success feedback (particles, sound hook, animation):
-- Fail feedback (funny, never scary/punishing):
-- Combo / streak effects:
+### 12. Out of V1 (mandatory)
+Explicit list. If it's tempting, it goes here.
 
-## 10. Systems (V1 only)
-- Score formula:
-- High score (local):
-- Pause / game over / instant restart:
-- Sound controls:
+### 13. Playtest Hypothesis + Kill/Continue
+- **Hypothesis:** Kids aged ___ who like ___ will ___ because ___.
+- **Continue if:**
+- **Kill / rework if:**
+- **Future World Connection (one line):** which neighborhood spot; what collectible may transfer later.
 
-## 11. Deliberately OUT of V1
-- (List everything we're saying no to — multiplayer, accounts, trading, etc.)
+---
 
-## 12. Expansion (later, not now)
-- Characters, maps, modes, collections, seasonal content:
-
-## 13. Playtest plan
-- Who (anonymous, e.g. "Tester A, 8"):
-- Watch for (replays unprompted? session length? quotes?):
-- Kill / continue criteria:
+**Approval gate:** all 13 answered + genre module filled → status APPROVED → generate `BUILDER-HANDOFF` → build. No more design docs.
