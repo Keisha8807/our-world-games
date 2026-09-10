@@ -33,10 +33,13 @@ See `ROADMAP.md` for the full sequence and what each game teaches us.
 ## Repo layout
 
 ```
-docs/                          # Concept cards, prompts, research (start here)
-  GAME-CONCEPT-CARD-TEMPLATE.md
-  GAME-001-MYSTERY-DASH.md
-  MVP-BUILDER-PROMPT.md
+docs/                          # Design system (start here)
+  STUDIO-DESIGN-BIBLE.md         # Written once, inherited by every game
+  GAME-CONCEPT-CARD-TEMPLATE.md  # ~2-page card, 13 items — earns permission to build
+  modules/                       # Genre modules: DEDUCTION, FASHION, CARE, RHYTHM, ECONOMY
+  BUILDER-HANDOFF-TEMPLATE.md    # ~1 page generated from an approved card
+  MVP-BUILDER-PROMPT.md          # Wrapper prompt the handoff is pasted into
+  GAME-001-MYSTERY-DASH.md       # Game cards live here
   research/                    # market notes, kid playtest notes (no kid PII ever)
 games/
   mystery-dash/                # Game #001 MVP code goes here
@@ -56,8 +59,8 @@ games/
 
 ## Workflow per game
 
-1. Fill out a Concept Card in `docs/` (copy the template).
-2. Paste the finished card into `MVP-BUILDER-PROMPT.md` and generate the browser game into `games/<slug>/`.
+1. Copy `docs/GAME-CONCEPT-CARD-TEMPLATE.md`, fill the 13 items + ONE genre module from `docs/modules/`. The Studio Design Bible is inherited — don't repeat it.
+2. Approve the card → condense it into a Builder Handoff (`docs/BUILDER-HANDOFF-TEMPLATE.md`) → paste into `MVP-BUILDER-PROMPT.md` and generate the browser game into `games/<slug>/`.
 3. Playtest with real kids. Record: replays unprompted? session length? "one more round?" quote?
 4. Only then: add content, then next game.
 
