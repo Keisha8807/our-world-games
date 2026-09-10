@@ -14,7 +14,7 @@ Each game starts as a small browser MVP that proves ONE player motivation. Winne
 
 | # | Game | Tests | Status |
 |---|------|-------|--------|
-| 001 | Mystery Dash: Rec Center | suspense, deduction, replayability | 🟡 Concept Card in progress |
+| 001 | Mystery Dash: Rec Center | suspense, deduction, replayability | 🟡 Concept + cast refinement |
 | 002 | Style Rush | identity, customization, collecting | ⚪ Next |
 | 003 | Pet ER: Rescue Vets | care, nurture, collecting | ⚪ Queued |
 | 004 | Double Dutch Hero | rhythm, arcade, score-chasing | ⚪ Queued |
@@ -33,37 +33,46 @@ See `ROADMAP.md` for the full sequence and what each game teaches us.
 ## Repo layout
 
 ```
-docs/                          # Design system (start here)
+docs/                            # Design system (start here)
   STUDIO-DESIGN-BIBLE.md         # Written once, inherited by every game
-  GAME-CONCEPT-CARD-TEMPLATE.md  # ~2-page card, 13 items — earns permission to build
+  standards/                     # Reusable visual/cultural implementation standards
+    BLACK-HAIR-DIGITAL-STANDARD.md # Code My Crown-informed hair construction + QA rules
+  GAME-CONCEPT-CARD-TEMPLATE.md  # Lean per-game card — earns permission to build
   modules/                       # Genre modules: DEDUCTION, FASHION, CARE, RHYTHM, ECONOMY
-  BUILDER-HANDOFF-TEMPLATE.md    # ~1 page generated from an approved card
-  MVP-BUILDER-PROMPT.md          # Wrapper prompt the handoff is pasted into
+  BUILDER-HANDOFF-TEMPLATE.md    # Compressed build contract generated from an approved card
+  MVP-BUILDER-PROMPT.md          # Wrapper prompt; Builder Handoff is pasted into it
   GAME-001-MYSTERY-DASH.md       # Game cards live here
-  research/                    # market notes, kid playtest notes (no kid PII ever)
+  research/                      # market notes, playtest notes (no kid PII ever)
 games/
-  mystery-dash/                # Game #001 MVP code goes here
-  style-rush/                  # Game #002 (empty until #001 tested)
-  pet-er/                      # Game #003
+  mystery-dash/                  # Game #001 MVP code goes here
+  style-rush/                    # Game #002 (empty until #001 tested)
+  pet-er/                        # Game #003
 ```
 
 ## Rules for every MVP
 
-1. ONE sentence pitch a 7-year-old understands.
-2. ONE core loop, fun in 10 seconds.
-3. ONE character, ONE map, ONE score system.
-4. No accounts, chat, multiplayer, trading, purchases, or open world in V1.
-5. Keyboard + mouse + touch. 60fps. Fast load. Chromebook-friendly.
-6. Local high scores only. No kid data leaves the browser.
-7. Goal of V1: **prove the core game is fun.** Nothing else.
+1. ONE sentence pitch a child in the target range understands.
+2. ONE clear core loop, with the first satisfying interaction in roughly 10 seconds.
+3. Keep V1 countable and small; exact character/map/content counts come from the approved card.
+4. No unapproved accounts, chat, online multiplayer, trading, purchases, ads, trackers, or open world in V1.
+5. Keyboard + touch first-class; Chromebook-friendly; target smooth 60fps where supported; fast first interaction.
+6. Local-only progress/high scores where needed. No unnecessary kid data leaves the browser.
+7. Goal of V1: **prove the core game is fun and test the stated playtest hypothesis.** Nothing else.
+8. Named characters stay named. Do not compress them into hairstyle/outfit labels during handoff or build.
+9. A written representation spec may be READY FOR ART; actual visual approval happens only after artwork passes the shared standards.
 
 ## Workflow per game
 
-1. Copy `docs/GAME-CONCEPT-CARD-TEMPLATE.md`, fill the 13 items + ONE genre module from `docs/modules/`. The Studio Design Bible is inherited — don't repeat it.
-2. Approve the card → condense it into a Builder Handoff (`docs/BUILDER-HANDOFF-TEMPLATE.md`) → paste into `MVP-BUILDER-PROMPT.md` and generate the browser game into `games/<slug>/`.
-3. Playtest with real kids. Record: replays unprompted? session length? "one more round?" quote?
-4. Only then: add content, then next game.
+1. Copy `docs/GAME-CONCEPT-CARD-TEMPLATE.md`, fill the core card + relevant genre module. The Studio Design Bible and shared standards are inherited — don't rewrite them.
+2. For character-driven games, preserve canonical names and enough face/hair/clothing/movement detail to keep every child distinct. Use `docs/standards/BLACK-HAIR-DIGITAL-STANDARD.md` for Black hair art/animation.
+3. Approve the design → condense it into a Builder Handoff (`docs/BUILDER-HANDOFF-TEMPLATE.md`) without deleting identity/rules → paste that handoff into `MVP-BUILDER-PROMPT.md`.
+4. Playtest with real kids. Record: did they understand it, replay unprompted, change strategy, ask for another round/content?
+5. Only then: revise/add content, then move to the next game.
+
+## Representation source note
+
+Our internal Black hair standard is informed by Dove **Code My Crown** and the Open Source Afro Hair Library. Their guides/assets remain their creators' work; Our World Games does not claim certification or endorsement. Third-party source models are not stored here by default. Review the current source license before directly incorporating any external downloadable asset.
 
 ## Privacy
 
-This is child-directed work. NEVER commit: kids' names, photos, videos, emails, school info, analytics with identifiers, or API keys. Playtest notes stay anonymous ("Tester A, age 8").
+This is child-directed work. NEVER commit: kids' names, photos, videos, emails, school info, precise location, analytics with identifiers, or API keys. Playtest notes stay anonymous ("Tester A, age 8").
