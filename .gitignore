@@ -1,0 +1,26 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Deps / builds (never commit kid data or keys either)
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+
+# Env / secrets — NEVER commit
+.env
+.env.*
+*.key
+*.pem
+
+# Playtest media with kids — NEVER commit
+playtests/*.mp4
+playtests/*.mov
+playtests/*.jpg
+playtests/*.png
