@@ -14,7 +14,7 @@ Each game starts as a small browser MVP that proves ONE player motivation. Winne
 
 | # | Game | Tests | Status |
 |---|------|-------|--------|
-| 001 | Mystery Dash: Rec Center | suspense, deduction, replayability | 🟡 Concept + cast refinement |
+| 001 | Mystery Dash: Rec Center | suspense, deduction, replayability | 🟡 Character visual development |
 | 002 | Style Rush | identity, customization, collecting | ⚪ Next |
 | 003 | Pet ER: Rescue Vets | care, nurture, collecting | ⚪ Queued |
 | 004 | Double Dutch Hero | rhythm, arcade, score-chasing | ⚪ Queued |
@@ -33,20 +33,23 @@ See `ROADMAP.md` for the full sequence and what each game teaches us.
 ## Repo layout
 
 ```
-docs/                            # Design system (start here)
-  STUDIO-DESIGN-BIBLE.md         # Written once, inherited by every game
-  standards/                     # Reusable visual/cultural implementation standards
-    BLACK-HAIR-DIGITAL-STANDARD.md # Code My Crown-informed hair construction + QA rules
-  GAME-CONCEPT-CARD-TEMPLATE.md  # Lean per-game card — earns permission to build
-  modules/                       # Genre modules: DEDUCTION, FASHION, CARE, RHYTHM, ECONOMY
-  BUILDER-HANDOFF-TEMPLATE.md    # Compressed build contract generated from an approved card
-  MVP-BUILDER-PROMPT.md          # Wrapper prompt; Builder Handoff is pasted into it
-  GAME-001-MYSTERY-DASH.md       # Game cards live here
-  research/                      # market notes, playtest notes (no kid PII ever)
+docs/                                      # Design system (start here)
+  STUDIO-DESIGN-BIBLE.md                   # Written once, inherited by every game
+  CHARACTER-VISUAL-DEVELOPMENT-TEMPLATE.md # Bridge from written canon → actual character art
+  standards/                               # Reusable visual/cultural implementation standards
+    BLACK-HAIR-DIGITAL-STANDARD.md         # Code My Crown-informed hair construction + QA rules
+    CHARACTER-VISUAL-APPROVAL-STANDARD.md  # Age/identity/hair/gameplay/cast visual gate
+  GAME-CONCEPT-CARD-TEMPLATE.md            # Lean per-game card — earns permission to build
+  modules/                                 # Genre modules: DEDUCTION, FASHION, CARE, RHYTHM, ECONOMY
+  BUILDER-HANDOFF-TEMPLATE.md              # Compressed build contract generated from an approved card
+  MVP-BUILDER-PROMPT.md                    # Wrapper prompt; Builder Handoff is pasted into it
+  GAME-001-MYSTERY-DASH.md                 # Mystery Dash concept + deduction rules
+  GAME-001-MYSTERY-DASH-CHARACTER-VISUAL-PASS.md # Six-kid art brief + visual test plan
+  research/                                # market notes, playtest notes (no kid PII ever)
 games/
-  mystery-dash/                  # Game #001 MVP code goes here
-  style-rush/                    # Game #002 (empty until #001 tested)
-  pet-er/                        # Game #003
+  mystery-dash/                            # Game #001 MVP code goes here
+  style-rush/                              # Game #002 (empty until #001 tested)
+  pet-er/                                  # Game #003
 ```
 
 ## Rules for every MVP
@@ -60,14 +63,16 @@ games/
 7. Goal of V1: **prove the core game is fun and test the stated playtest hypothesis.** Nothing else.
 8. Named characters stay named. Do not compress them into hairstyle/outfit labels during handoff or build.
 9. A written representation spec may be READY FOR ART; actual visual approval happens only after artwork passes the shared standards.
+10. Character-driven games do not enter the Builder Handoff with placeholder/generic cast art unless the approved playtest explicitly calls for it.
 
 ## Workflow per game
 
 1. Copy `docs/GAME-CONCEPT-CARD-TEMPLATE.md`, fill the core card + relevant genre module. The Studio Design Bible and shared standards are inherited — don't rewrite them.
 2. For character-driven games, preserve canonical names and enough face/hair/clothing/movement detail to keep every child distinct. Use `docs/standards/BLACK-HAIR-DIGITAL-STANDARD.md` for Black hair art/animation.
-3. Approve the design → condense it into a Builder Handoff (`docs/BUILDER-HANDOFF-TEMPLATE.md`) without deleting identity/rules → paste that handoff into `MVP-BUILDER-PROMPT.md`.
-4. Playtest with real kids. Record: did they understand it, replay unprompted, change strategy, ask for another round/content?
-5. Only then: revise/add content, then move to the next game.
+3. Run a lean character visual pass using `docs/CHARACTER-VISUAL-DEVELOPMENT-TEMPLATE.md`. Actual art must pass `docs/standards/CHARACTER-VISUAL-APPROVAL-STANDARD.md`; prompt text alone cannot earn visual approval.
+4. Approve the game design + necessary visual direction → condense it into a Builder Handoff (`docs/BUILDER-HANDOFF-TEMPLATE.md`) without deleting identity/rules → paste that handoff into `MVP-BUILDER-PROMPT.md`.
+5. Playtest with real kids. Record: did they understand it, replay unprompted, change strategy, ask for another round/content?
+6. Only then: revise/add content, then move to the next game.
 
 ## Representation source note
 
