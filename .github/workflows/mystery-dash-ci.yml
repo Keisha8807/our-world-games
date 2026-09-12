@@ -1,0 +1,33 @@
+name: Mystery Dash MVP CI
+
+on:
+  push:
+    branches:
+      - build/mystery-dash-v1
+    paths:
+      - 'games/mystery-dash/**'
+      - '.github/workflows/mystery-dash-ci.yml'
+  pull_request:
+    paths:
+      - 'games/mystery-dash/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: games/mystery-dash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck and build
+        run: npm run build
