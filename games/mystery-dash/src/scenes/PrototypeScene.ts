@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { behaviorCueFor } from '../game/behavior';
 import {
   generateRound,
   matchingSuspects,
@@ -34,6 +35,11 @@ export class PrototypeScene extends Phaser.Scene {
   private clueMarkers: ClueMarker[] = [];
   private discoveredClues: EvidenceRecord[] = [];
   private wrongAccusations = new Set<SuspectName>();
+  private resolvedRedHerringSecret = false;
+
+  private suspectBodies = new Map<SuspectName, Phaser.GameObjects.Rectangle>();
+  private behaviorTick = 0;
+  private behaviorEvent?: Phaser.Time.TimerEvent;
 
   private caseBoard!: Phaser.GameObjects.Container;
   private caseBoardOpen = false;
@@ -58,6 +64,9 @@ export class PrototypeScene extends Phaser.Scene {
     this.score = 0;
     this.discoveredClues = [];
     this.wrongAccusations.clear();
+    this.resolvedRedHerringSecret = false;
+    this.suspectBodies.clear();
+    this.behaviorTick = 0;
     this.caseBoardOpen = false;
     this.roundEnded = false;
 
@@ -69,6 +78,7 @@ export class PrototypeScene extends Phaser.Scene {
     this.createClues();
     this.createCaseBoard();
     this.bindInput();
+    this.createBehaviorDirector();
 
     this.roundEndsAt = this.time.now + 120_000;
     this.refreshHud();
@@ -201,6 +211,8 @@ export class PrototypeScene extends Phaser.Scene {
 
     for (const suspect of suspects) {
       const body = this.add.rectangle(suspect.x, suspect.y, 32, 44, suspect.color).setStrokeStyle(2, 0xffffff).setDepth(8);
+      this.suspectBodies.set(suspect.name, body);
+
       this.add
         .text(suspect.x - 22, suspect.y - 38, suspect.name, {
           color: '#0f172a',
@@ -220,6 +232,50 @@ export class PrototypeScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
     }
+  }
+
+  private createBehaviorDirector(): void {
+    this.behaviorEvent = this.time.addEvent({
+      delay: 2800,
+      loop: true,
+      callback: () => this.showNextBehaviorCue(),
+    });
+  }
+
+  private showNextBehaviorCue(): void {
+    if (this.roundEnded || this.caseBoardOpen) return;
+
+    const name = SUSPECT_NAMES[this.behaviorTick % SUSPECT_NAMES.length];
+    const body = this.suspectBodies.get(name);
+    if (!body) return;
+
+    const cycle = Math.floor(this.behaviorTick / SUSPECT_NAMES.length);
+    const roleCanLookSuspicious = name === this.round.sneak || name === this.round.redHerring;
+    const showSuspicious = roleCanLookSuspicious && cycle % 2 === 1;
+    const cue = behaviorCueFor(name, showSuspicious, cycle);
+    this.behaviorTick += 1;
+
+    const bubble = this.add
+      .text(body.x, body.y - 58, cue, {
+        color: '#172033',
+        backgroundColor: '#ffffff',
+        padding: { x: 7, y: 4 },
+        fontSize: '11px',
+        fontStyle: showSuspicious ? 'bold' : 'normal',
+      })
+      .setOrigin(0.5)
+      .setDepth(25)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: bubble,
+      alpha: 1,
+      y: bubble.y - 6,
+      duration: 180,
+      yoyo: true,
+      hold: 1050,
+      onComplete: () => bubble.destroy(),
+    });
   }
 
   private createClues(): void {
@@ -343,7 +399,7 @@ export class PrototypeScene extends Phaser.Scene {
       this.caseBoardOpen = !this.caseBoardOpen;
       this.caseBoard.setVisible(this.caseBoardOpen);
       this.playerBody.setVelocity(0, 0);
-      this.caseStatusText.setText(this.discoveredClues.length === 0 ? 'Find at least one clue before accusing.' : '');
+      this.caseStatusText.setText(this.defaultCaseStatus());
     });
 
     this.accuseKeys = [
@@ -366,6 +422,15 @@ export class PrototypeScene extends Phaser.Scene {
     });
   }
 
+  private defaultCaseStatus(): string {
+    if (this.discoveredClues.length === 0) return 'Find at least one clue before accusing.';
+    if (this.resolvedRedHerringSecret) {
+      return `${this.round.redHerring}'s ${this.round.secret.title} explains the weird behavior — but check the full evidence.`;
+    }
+    if (this.discoveredClues.length >= 2) return 'You can investigate nearby kids with E to understand suspicious behavior.';
+    return '';
+  }
+
   private activeClueMarker(): ClueMarker | undefined {
     return this.clueMarkers.find((marker) => !marker.found && marker.circle.visible);
   }
@@ -374,11 +439,18 @@ export class PrototypeScene extends Phaser.Scene {
     if (this.caseBoardOpen || this.roundEnded) return;
 
     const marker = this.activeClueMarker();
-    if (!marker) return;
+    if (marker) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, marker.circle.x, marker.circle.y);
+      if (distance <= 66) {
+        this.collectClue(marker);
+        return;
+      }
+    }
 
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, marker.circle.x, marker.circle.y);
-    if (distance > 66) return;
+    this.tryInvestigateSuspect();
+  }
 
+  private collectClue(marker: ClueMarker): void {
     marker.found = true;
     marker.circle.setVisible(false);
     marker.label.setVisible(false);
@@ -393,14 +465,60 @@ export class PrototypeScene extends Phaser.Scene {
 
     this.refreshHud();
     this.refreshCaseBoard();
-    this.showDiscoveryPop(marker.evidence);
+    this.showWorldPop(`CLUE FOUND +50\n${marker.evidence.title}`, '#7c3aed');
   }
 
-  private showDiscoveryPop(evidence: EvidenceRecord): void {
+  private tryInvestigateSuspect(): void {
+    let nearestName: SuspectName | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const name of SUSPECT_NAMES) {
+      const body = this.suspectBodies.get(name);
+      if (!body) continue;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, body.x, body.y);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestName = name;
+      }
+    }
+
+    if (!nearestName || nearestDistance > 72) return;
+
+    if (this.discoveredClues.length < 2) {
+      this.showWorldPop('Watch their habits first.\nFind more evidence.', '#475569');
+      return;
+    }
+
+    if (nearestName === this.round.redHerring && !this.resolvedRedHerringSecret) {
+      this.resolvedRedHerringSecret = true;
+      this.score += 100;
+      this.refreshHud();
+      this.refreshCaseBoard();
+      this.caseStatusText.setText(
+        `${nearestName}'s ${this.round.secret.title} explains the suspicious behavior — but they may still match other evidence.`,
+      );
+      this.showWorldPop(`SECRET EXPLAINED +100\n${this.round.secret.title}`, '#0f766e');
+      return;
+    }
+
+    if (nearestName === this.round.redHerring && this.resolvedRedHerringSecret) {
+      this.showWorldPop(`${nearestName}'s weird behavior is explained.\nKeep checking the evidence.`, '#0f766e');
+      return;
+    }
+
+    if (nearestName === this.round.sneak) {
+      this.showWorldPop(`${nearestName} is still acting unusual...\nThat is not proof yet.`, '#7c2d12');
+      return;
+    }
+
+    this.showWorldPop(`${nearestName} seems normal right now.`, '#475569');
+  }
+
+  private showWorldPop(message: string, backgroundColor: string): void {
     const pop = this.add
-      .text(this.player.x, this.player.y - 58, `CLUE FOUND +50\n${evidence.title}`, {
+      .text(this.player.x, this.player.y - 58, message, {
         color: '#ffffff',
-        backgroundColor: '#7c3aed',
+        backgroundColor,
         padding: { x: 10, y: 6 },
         fontSize: '14px',
         fontStyle: 'bold',
@@ -413,7 +531,7 @@ export class PrototypeScene extends Phaser.Scene {
       targets: pop,
       y: pop.y - 28,
       alpha: 0,
-      duration: 1150,
+      duration: 1250,
       onComplete: () => pop.destroy(),
     });
   }
@@ -424,9 +542,13 @@ export class PrototypeScene extends Phaser.Scene {
   }
 
   private refreshCaseBoard(): void {
-    const evidenceLines = this.discoveredClues.length
+    let evidenceLines = this.discoveredClues.length
       ? this.discoveredClues.map((clue, index) => `${index + 1}. ${clue.title}\n   ${clue.detail}`).join('\n\n')
       : 'No evidence yet. Explore the rec center and investigate the glowing clue.';
+
+    if (this.resolvedRedHerringSecret) {
+      evidenceLines += `\n\nBEHAVIOR NOTE\n${this.round.redHerring}: ${this.round.secret.title} explains the suspicious behavior, not the full evidence trail.`;
+    }
 
     this.caseEvidenceText.setText(`EVIDENCE\n${evidenceLines}`);
 
@@ -434,7 +556,11 @@ export class PrototypeScene extends Phaser.Scene {
     const suspectLines = SUSPECT_NAMES.map((name) => {
       if (this.wrongAccusations.has(name)) return `✕ ${name} — wrong guess`;
       if (this.discoveredClues.length === 0) return `? ${name}`;
-      return plausible.includes(name) ? `⚠ ${name} — still fits` : `✓ ${name} — cleared`;
+      if (!plausible.includes(name)) return `✓ ${name} — cleared`;
+      if (name === this.round.redHerring && this.resolvedRedHerringSecret) {
+        return `⚠ ${name} — behavior explained`;
+      }
+      return `⚠ ${name} — still fits`;
     });
 
     this.caseSuspectText.setText(`SUSPECTS\n${suspectLines.join('\n')}`);
@@ -490,6 +616,7 @@ export class PrototypeScene extends Phaser.Scene {
     this.caseBoardOpen = false;
     this.caseBoard.setVisible(false);
     this.playerBody.setVelocity(0, 0);
+    this.behaviorEvent?.remove(false);
 
     const solved = reason === 'solved';
     const heading = solved ? 'CASE SOLVED!' : 'TIME! CASE REVEALED';
