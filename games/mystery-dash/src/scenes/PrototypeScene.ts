@@ -1,10 +1,25 @@
 import Phaser from 'phaser';
+import {
+  generateRound,
+  matchingSuspects,
+  SUSPECT_NAMES,
+  type EvidenceRecord,
+  type MysteryRound,
+  type SuspectName,
+} from '../game/deduction';
 
 type Suspect = {
-  name: 'Nia' | 'Malik' | 'Zuri' | 'Jayden';
+  name: SuspectName;
   x: number;
   y: number;
   color: number;
+};
+
+type ClueMarker = {
+  circle: Phaser.GameObjects.Arc;
+  label: Phaser.GameObjects.Text;
+  evidence: EvidenceRecord;
+  found: boolean;
 };
 
 export class PrototypeScene extends Phaser.Scene {
@@ -12,28 +27,62 @@ export class PrototypeScene extends Phaser.Scene {
   private playerBody!: Phaser.Physics.Arcade.Body;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'E' | 'TAB', Phaser.Input.Keyboard.Key>;
-  private clue!: Phaser.GameObjects.Arc;
-  private clueFound = false;
+  private accuseKeys: Phaser.Input.Keyboard.Key[] = [];
+  private restartKey?: Phaser.Input.Keyboard.Key;
+
+  private round!: MysteryRound;
+  private clueMarkers: ClueMarker[] = [];
+  private discoveredClues: EvidenceRecord[] = [];
+  private wrongAccusations = new Set<SuspectName>();
+
   private caseBoard!: Phaser.GameObjects.Container;
   private caseBoardOpen = false;
+  private caseEvidenceText!: Phaser.GameObjects.Text;
+  private caseSuspectText!: Phaser.GameObjects.Text;
+  private caseStatusText!: Phaser.GameObjects.Text;
+
   private clueText!: Phaser.GameObjects.Text;
+  private scoreText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private score = 0;
+  private roundEndsAt = 0;
+  private roundEnded = false;
+  private revealPanel?: Phaser.GameObjects.Container;
 
   constructor() {
     super('prototype');
   }
 
   create(): void {
+    this.round = generateRound();
+    this.score = 0;
+    this.discoveredClues = [];
+    this.wrongAccusations.clear();
+    this.caseBoardOpen = false;
+    this.roundEnded = false;
+
     this.physics.world.setBounds(0, 0, 960, 540);
     this.drawRecCenter();
     this.createHud();
     this.createPlayer();
     this.createSuspects();
-    this.createClue();
+    this.createClues();
     this.createCaseBoard();
     this.bindInput();
+
+    this.roundEndsAt = this.time.now + 120_000;
+    this.refreshHud();
+    this.refreshCaseBoard();
   }
 
   update(): void {
+    this.updateTimer();
+
+    if (this.roundEnded || this.caseBoardOpen) {
+      this.playerBody.setVelocity(0, 0);
+      return;
+    }
+
     const speed = 220;
     let x = 0;
     let y = 0;
@@ -47,13 +96,10 @@ export class PrototypeScene extends Phaser.Scene {
     if (direction.lengthSq() > 0) direction.normalize().scale(speed);
     this.playerBody.setVelocity(direction.x, direction.y);
 
-    if (!this.clueFound) {
-      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.clue.x, this.clue.y);
-      if (distance < 54) {
-        this.clue.setScale(1.25);
-      } else {
-        this.clue.setScale(1);
-      }
+    const active = this.activeClueMarker();
+    if (active) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, active.circle.x, active.circle.y);
+      active.circle.setScale(distance < 58 ? 1.3 : 1);
     }
   }
 
@@ -92,28 +138,47 @@ export class PrototypeScene extends Phaser.Scene {
 
   private createHud(): void {
     this.add
-      .text(24, 18, 'MYSTERY DASH — MOVEMENT PROTOTYPE', {
+      .text(24, 18, 'MYSTERY DASH — DEDUCTION PROTOTYPE', {
         color: '#102a56',
-        fontSize: '22px',
+        fontSize: '21px',
         fontStyle: 'bold',
       })
       .setDepth(20);
 
     this.add
-      .text(24, 48, 'Move: WASD / arrows   •   Investigate: E   •   Case Board: Tab', {
+      .text(24, 48, 'Move: WASD/arrows  •  Investigate: E  •  Case Board: Tab  •  Accuse: 1–4 on board', {
         color: '#475569',
-        fontSize: '14px',
+        fontSize: '13px',
       })
       .setDepth(20);
 
     this.clueText = this.add
-      .text(720, 20, 'CLUES 0/1', {
+      .text(676, 18, 'CLUES 0/3', {
         color: '#ffffff',
         backgroundColor: '#173c74',
-        padding: { x: 12, y: 7 },
-        fontSize: '16px',
+        padding: { x: 10, y: 7 },
+        fontSize: '15px',
         fontStyle: 'bold',
       })
+      .setDepth(20);
+
+    this.scoreText = this.add
+      .text(792, 18, 'SCORE 0', {
+        color: '#ffffff',
+        backgroundColor: '#7c3aed',
+        padding: { x: 10, y: 7 },
+        fontSize: '15px',
+        fontStyle: 'bold',
+      })
+      .setDepth(20);
+
+    this.timerText = this.add
+      .text(866, 54, '2:00', {
+        color: '#173c74',
+        fontSize: '18px',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
       .setDepth(20);
   }
 
@@ -157,42 +222,109 @@ export class PrototypeScene extends Phaser.Scene {
     }
   }
 
-  private createClue(): void {
-    this.clue = this.add.circle(410, 415, 13, 0xfacc15).setStrokeStyle(4, 0xffffff).setDepth(10);
-    this.add.text(389, 383, 'CLUE', { color: '#854d0e', fontSize: '12px', fontStyle: 'bold' }).setDepth(10);
+  private createClues(): void {
+    const positions = [
+      { x: 405, y: 390 },
+      { x: 755, y: 370 },
+      { x: 490, y: 125 },
+    ];
 
-    this.tweens.add({
-      targets: this.clue,
-      alpha: 0.45,
-      duration: 650,
-      yoyo: true,
-      repeat: -1,
+    this.clueMarkers = this.round.clues.map((evidence, index) => {
+      const position = positions[index];
+      const circle = this.add.circle(position.x, position.y, 13, 0xfacc15).setStrokeStyle(4, 0xffffff).setDepth(10);
+      const label = this.add
+        .text(position.x - 25, position.y - 34, `CLUE ${index + 1}`, {
+          color: '#854d0e',
+          fontSize: '12px',
+          fontStyle: 'bold',
+          backgroundColor: '#fff7cc',
+          padding: { x: 4, y: 2 },
+        })
+        .setDepth(10);
+
+      const visible = index === 0;
+      circle.setVisible(visible);
+      label.setVisible(visible);
+
+      this.tweens.add({
+        targets: circle,
+        alpha: 0.45,
+        duration: 650,
+        yoyo: true,
+        repeat: -1,
+      });
+
+      return { circle, label, evidence, found: false };
     });
   }
 
   private createCaseBoard(): void {
-    const panel = this.add.rectangle(480, 270, 620, 360, 0xfffbeb, 0.98).setStrokeStyle(5, 0x173c74);
-    const title = this.add.text(245, 112, 'THE GOLDEN SNEAKER CASE', {
+    const panel = this.add.rectangle(480, 270, 760, 420, 0xfffbeb, 0.99).setStrokeStyle(5, 0x173c74);
+    const title = this.add.text(125, 82, 'THE GOLDEN SNEAKER CASE', {
       color: '#173c74',
-      fontSize: '28px',
+      fontSize: '27px',
       fontStyle: 'bold',
     });
-    const evidence = this.add.text(245, 170, 'Evidence\n• Sneaker print: ?', {
+
+    this.caseEvidenceText = this.add.text(125, 132, '', {
       color: '#334155',
-      fontSize: '20px',
-      lineSpacing: 12,
-    });
-    const suspects = this.add.text(560, 170, 'Suspects\n? Nia\n? Malik\n? Zuri\n? Jayden', {
-      color: '#334155',
-      fontSize: '20px',
-      lineSpacing: 8,
-    });
-    const hint = this.add.text(245, 438, 'TAB to close — the board shows facts, not the answer.', {
-      color: '#64748b',
       fontSize: '15px',
+      lineSpacing: 7,
+      wordWrap: { width: 405 },
     });
 
-    this.caseBoard = this.add.container(0, 0, [panel, title, evidence, suspects, hint]).setDepth(50).setVisible(false);
+    this.caseSuspectText = this.add.text(565, 132, '', {
+      color: '#334155',
+      fontSize: '17px',
+      lineSpacing: 9,
+    });
+
+    const accuseLabel = this.add.text(565, 300, 'ACCUSE — click or press:', {
+      color: '#173c74',
+      fontSize: '15px',
+      fontStyle: 'bold',
+    });
+
+    const buttons: Phaser.GameObjects.Text[] = [];
+    SUSPECT_NAMES.forEach((name, index) => {
+      const button = this.add
+        .text(565 + (index % 2) * 145, 330 + Math.floor(index / 2) * 45, `${index + 1}. ${name}`, {
+          color: '#ffffff',
+          backgroundColor: '#173c74',
+          padding: { x: 10, y: 7 },
+          fontSize: '15px',
+          fontStyle: 'bold',
+        })
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => this.makeAccusation(name));
+      buttons.push(button);
+    });
+
+    this.caseStatusText = this.add.text(125, 447, '', {
+      color: '#7c2d12',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      wordWrap: { width: 600 },
+    });
+
+    const hint = this.add.text(565, 430, 'TAB closes board', {
+      color: '#64748b',
+      fontSize: '13px',
+    });
+
+    this.caseBoard = this.add
+      .container(0, 0, [
+        panel,
+        title,
+        this.caseEvidenceText,
+        this.caseSuspectText,
+        accuseLabel,
+        ...buttons,
+        this.caseStatusText,
+        hint,
+      ])
+      .setDepth(50)
+      .setVisible(false);
   }
 
   private bindInput(): void {
@@ -207,29 +339,72 @@ export class PrototypeScene extends Phaser.Scene {
     this.keys.E.on('down', () => this.tryInvestigate());
     this.keys.TAB.on('down', (event: KeyboardEvent) => {
       event.preventDefault();
+      if (this.roundEnded) return;
       this.caseBoardOpen = !this.caseBoardOpen;
       this.caseBoard.setVisible(this.caseBoardOpen);
       this.playerBody.setVelocity(0, 0);
+      this.caseStatusText.setText(this.discoveredClues.length === 0 ? 'Find at least one clue before accusing.' : '');
+    });
+
+    this.accuseKeys = [
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE),
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR),
+    ];
+
+    this.accuseKeys.forEach((key, index) => {
+      key.on('down', () => {
+        if (!this.caseBoardOpen || this.roundEnded) return;
+        this.makeAccusation(SUSPECT_NAMES[index]);
+      });
+    });
+
+    this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.restartKey.on('down', () => {
+      if (this.roundEnded) this.scene.restart();
     });
   }
 
+  private activeClueMarker(): ClueMarker | undefined {
+    return this.clueMarkers.find((marker) => !marker.found && marker.circle.visible);
+  }
+
   private tryInvestigate(): void {
-    if (this.clueFound || this.caseBoardOpen) return;
+    if (this.caseBoardOpen || this.roundEnded) return;
 
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.clue.x, this.clue.y);
-    if (distance > 62) return;
+    const marker = this.activeClueMarker();
+    if (!marker) return;
 
-    this.clueFound = true;
-    this.clue.setVisible(false);
-    this.clueText.setText('CLUES 1/1');
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, marker.circle.x, marker.circle.y);
+    if (distance > 66) return;
 
+    marker.found = true;
+    marker.circle.setVisible(false);
+    marker.label.setVisible(false);
+    this.discoveredClues.push(marker.evidence);
+    this.score += 50;
+
+    const next = this.clueMarkers.find((candidate) => !candidate.found);
+    if (next) {
+      next.circle.setVisible(true);
+      next.label.setVisible(true);
+    }
+
+    this.refreshHud();
+    this.refreshCaseBoard();
+    this.showDiscoveryPop(marker.evidence);
+  }
+
+  private showDiscoveryPop(evidence: EvidenceRecord): void {
     const pop = this.add
-      .text(this.player.x, this.player.y - 55, 'CLUE FOUND +50', {
+      .text(this.player.x, this.player.y - 58, `CLUE FOUND +50\n${evidence.title}`, {
         color: '#ffffff',
         backgroundColor: '#7c3aed',
         padding: { x: 10, y: 6 },
-        fontSize: '16px',
+        fontSize: '14px',
         fontStyle: 'bold',
+        align: 'center',
       })
       .setOrigin(0.5)
       .setDepth(30);
@@ -238,8 +413,121 @@ export class PrototypeScene extends Phaser.Scene {
       targets: pop,
       y: pop.y - 28,
       alpha: 0,
-      duration: 900,
+      duration: 1150,
       onComplete: () => pop.destroy(),
     });
+  }
+
+  private refreshHud(): void {
+    this.clueText.setText(`CLUES ${this.discoveredClues.length}/3`);
+    this.scoreText.setText(`SCORE ${this.score}`);
+  }
+
+  private refreshCaseBoard(): void {
+    const evidenceLines = this.discoveredClues.length
+      ? this.discoveredClues.map((clue, index) => `${index + 1}. ${clue.title}\n   ${clue.detail}`).join('\n\n')
+      : 'No evidence yet. Explore the rec center and investigate the glowing clue.';
+
+    this.caseEvidenceText.setText(`EVIDENCE\n${evidenceLines}`);
+
+    const plausible = matchingSuspects(this.discoveredClues);
+    const suspectLines = SUSPECT_NAMES.map((name) => {
+      if (this.wrongAccusations.has(name)) return `✕ ${name} — wrong guess`;
+      if (this.discoveredClues.length === 0) return `? ${name}`;
+      return plausible.includes(name) ? `⚠ ${name} — still fits` : `✓ ${name} — cleared`;
+    });
+
+    this.caseSuspectText.setText(`SUSPECTS\n${suspectLines.join('\n')}`);
+  }
+
+  private makeAccusation(name: SuspectName): void {
+    if (this.roundEnded) return;
+
+    if (this.discoveredClues.length === 0) {
+      this.caseStatusText.setText('Find at least one clue before accusing.');
+      return;
+    }
+
+    if (this.wrongAccusations.has(name)) {
+      this.caseStatusText.setText(`You already ruled out ${name}.`);
+      return;
+    }
+
+    if (name === this.round.sneak) {
+      const remainingSeconds = Math.max(0, Math.ceil((this.roundEndsAt - this.time.now) / 1000));
+      const timeBonus = Math.min(100, remainingSeconds);
+      this.score += 200 + timeBonus;
+      this.refreshHud();
+      this.endRound('solved', name, timeBonus);
+      return;
+    }
+
+    this.score = Math.max(0, this.score - 50);
+    this.wrongAccusations.add(name);
+    this.refreshHud();
+    this.refreshCaseBoard();
+    this.caseStatusText.setText(`${name} was not the Sneak. −50. Keep investigating.`);
+  }
+
+  private updateTimer(): void {
+    if (this.roundEnded) return;
+
+    const remainingMs = Math.max(0, this.roundEndsAt - this.time.now);
+    const seconds = Math.ceil(remainingMs / 1000);
+    const minutesPart = Math.floor(seconds / 60);
+    const secondsPart = String(seconds % 60).padStart(2, '0');
+    this.timerText.setText(`${minutesPart}:${secondsPart}`);
+
+    if (remainingMs <= 0) {
+      this.endRound('timeout');
+    }
+  }
+
+  private endRound(reason: 'solved' | 'timeout', accused?: SuspectName, timeBonus = 0): void {
+    if (this.roundEnded) return;
+
+    this.roundEnded = true;
+    this.caseBoardOpen = false;
+    this.caseBoard.setVisible(false);
+    this.playerBody.setVelocity(0, 0);
+
+    const solved = reason === 'solved';
+    const heading = solved ? 'CASE SOLVED!' : 'TIME! CASE REVEALED';
+    const resultLine = solved
+      ? `${accused} was the Sneak. Nice deduction.`
+      : `The Sneak was ${this.round.sneak}.`;
+
+    const secretLine = `${this.round.redHerring} looked suspicious because of: ${this.round.secret.title}.`;
+    const bonusLine = solved ? `Time bonus: +${timeBonus}` : 'Try another case and watch how the evidence changes.';
+
+    const panel = this.add.rectangle(480, 270, 620, 330, 0x102a56, 0.98).setStrokeStyle(5, 0xfacc15);
+    const title = this.add
+      .text(480, 155, heading, { color: '#ffffff', fontSize: '30px', fontStyle: 'bold' })
+      .setOrigin(0.5);
+    const result = this.add
+      .text(480, 215, `${resultLine}\n\n${secretLine}\n${this.round.secret.summary}\n\n${bonusLine}`, {
+        color: '#e2e8f0',
+        fontSize: '16px',
+        align: 'center',
+        wordWrap: { width: 520 },
+        lineSpacing: 6,
+      })
+      .setOrigin(0.5);
+    const score = this.add
+      .text(480, 355, `FINAL SCORE ${this.score}`, { color: '#facc15', fontSize: '21px', fontStyle: 'bold' })
+      .setOrigin(0.5);
+    const replay = this.add
+      .text(480, 405, 'PLAY AGAIN  —  press R or tap here', {
+        color: '#102a56',
+        backgroundColor: '#facc15',
+        padding: { x: 18, y: 10 },
+        fontSize: '17px',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.restart());
+
+    this.revealPanel = this.add.container(0, 0, [panel, title, result, score, replay]).setDepth(100);
   }
 }
