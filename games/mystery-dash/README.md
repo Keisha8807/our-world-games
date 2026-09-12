@@ -27,7 +27,7 @@ Then open the local Vite URL shown in the terminal.
 
 ## Current milestone
 
-**Milestone 1 — deduction engine implemented; browser/build verification pending**
+**Milestone 2 — deduction + first NPC behavior layer implemented; CI build green**
 
 Current prototype includes:
 - one simplified rec-center layout
@@ -44,17 +44,26 @@ Current prototype includes:
 - wrong-accusation penalty while the case continues
 - correct reveal, red-herring secret explanation, score/time bonus, timeout reveal, and instant replay
 - 120-second timer
+- canonical baseline behavior cues for Nia, Malik, Zuri, and Jayden
+- suspicious deviations for the Sneak and red herring without making nervous behavior automatic proof
+- close-range `E` investigation after clue 2 that can explain the red herring's innocent secret without automatically clearing the whole evidence trail
 
 The colored geometry is **internal placeholder art only**. It is not a kid playtest build and does not replace the approved character direction.
 
-A GitHub Actions build check has been added at `.github/workflows/mystery-dash-ci.yml`. If Actions are enabled for the repository/branch, it runs `npm install` + `npm run build` for Mystery Dash changes.
+### Build validation
+
+GitHub Actions workflow: `.github/workflows/mystery-dash-ci.yml`
+
+Latest deduction/NPC milestone: **TypeScript + Vite build passed**.
+
+CI verifies compilation/build only. It does **not** replace real browser/device testing or kid playtesting.
 
 ## Build order
 
 1. **Movement + map shell** — implemented.
-2. **Deduction engine** — implemented; verify in browser/build before locking.
-3. **NPC behavior** — canonical baseline behaviors + suspicious deviations.
-4. **Pressure/chase** — only after deduction works in play.
+2. **Deduction engine** — implemented and build-verified.
+3. **NPC behavior** — first baseline/suspicious-deviation layer implemented and build-verified.
+4. **Pressure/chase** — HOLD until the deduction loop is manually played; chase must not become the only fun part.
 5. **Touch controls** — joystick + context button + Case Board.
 6. **Gameplay-scale character assets** — replace placeholders without changing canon.
 7. **Juice + audio hooks + persistence** — score, stickers, high score, reduced-motion-safe feedback.
@@ -68,8 +77,9 @@ A GitHub Actions build check has been added at `.github/workflows/mystery-dash-c
 - [x] Deduction engine code guarantees exactly one defensible solution per generated round
 - [x] Case Board code supports evidence-based narrowing/reconsideration
 - [x] Accusation + reveal + instant replay implemented
-- [ ] Browser/build verification completed
-- [ ] NPC baseline/suspicious behavior implemented
+- [x] TypeScript/Vite build passes CI
+- [x] First NPC baseline/suspicious behavior layer implemented
+- [ ] Core deduction round manually played in browser
 - [ ] Touch + keyboard verified on target devices
 - [ ] Chase adds pressure without replacing deduction
 - [ ] Gameplay-scale character assets integrated
